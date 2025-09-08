@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lineup_db
+    environment:
+      POSTGRES_USER: lineup
+      POSTGRES_PASSWORD: lineup
+      POSTGRES_DB: lineup
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lineup"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build: .
+    container_name: lineup_bot
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      POSTGRES_DSN: postgres://lineup:lineup@db:5432/lineup?sslmode=disable
+      LOG_VERBOSE: "1"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
