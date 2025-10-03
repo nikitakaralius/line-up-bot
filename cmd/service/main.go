@@ -23,16 +23,17 @@ type Config struct {
 
 func main() {
 	cfg := Config{}
-	flag.StringVar(&cfg.TelegramBotToken, "telegram-bot-token", "", "Telegram bot token (required)")
 	flag.StringVar(&cfg.DatabaseDSN, "dsn", "", "Postgres DB DSN (required)")
 	flag.BoolVar(&cfg.LogVerbose, "verbose", false, "Enable verbose logging (default = false)")
 	flag.Parse()
 
-	if cfg.TelegramBotToken == "" {
-		log.Fatal("telegram-bot-token is required")
-	}
 	if cfg.DatabaseDSN == "" {
 		log.Fatal("dsn is required")
+	}
+
+	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
+	if cfg.TelegramBotToken == "" {
+		log.Fatal("env TELEGRAM_BOT_TOKEN is required")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
