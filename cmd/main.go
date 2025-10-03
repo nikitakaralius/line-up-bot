@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -15,29 +16,23 @@ import (
 
 // Config holds environment configuration
 type Config struct {
-	BotToken    string
-	DatabaseDSN string
-	LogVerbose  bool
-}
-
-func getenv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
+	TelegramBotToken string
+	DatabaseDSN      string
+	LogVerbose       bool
 }
 
 func main() {
-	cfg := Config{
-		BotToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
-		DatabaseDSN: os.Getenv("POSTGRES_DSN"),
-		LogVerbose:  getenv("LOG_VERBOSE", "0") == "1",
-	}
-	if cfg.BotToken == "" {
-		log.Fatal("TELEGRAM_BOT_TOKEN is required")
+	cfg := Config{}
+	flag.StringVar(&cfg.TelegramBotToken, "telegram-bot-token", "", "Telegram bot token (required)")
+	flag.StringVar(&cfg.DatabaseDSN, "dsn", "", "Postgres DB DSN (required)")
+	flag.BoolVar(&cfg.LogVerbose, "verbose", false, "Enable verbose logging (default = false)")
+	flag.Parse()
+
+	if cfg.TelegramBotToken == "" {
+		log.Fatal("telegram-bot-token is required")
 	}
 	if cfg.DatabaseDSN == "" {
-		log.Fatal("POSTGRES_DSN is required")
+		log.Fatal("dsn is required")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -48,16 +43,16 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
-	var err2 error = telegram.WaitForDB(ctx, store.DB)
-	if err2 != nil {
-		log.Fatal(err2)
+	err = telegram.WaitForDB(ctx, store.DB)
+	if err != nil {
+		log.Fatal(err)
 	}
-	var err3 error = store.Migrate(ctx)
-	if err3 != nil {
-		log.Fatal(err3)
+	err = store.Migrate(ctx)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
+	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
 		log.Fatal(err)
 	}
