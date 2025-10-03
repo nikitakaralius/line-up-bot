@@ -6,4 +6,4 @@
 *.test
 *.outgo.work
 *.idea/
-*.bin/
+*bin/
