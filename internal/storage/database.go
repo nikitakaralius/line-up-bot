@@ -26,47 +26,6 @@ func NewStore(dsn string) (*Store, error) {
 
 func (s *Store) Close() error { return s.DB.Close() }
 
-func (s *Store) Migrate(ctx context.Context) error {
-	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS polls (
-			id SERIAL PRIMARY KEY,
-			poll_id TEXT UNIQUE NOT NULL,
-			chat_id BIGINT NOT NULL,
-			message_id INT NOT NULL,
-			topic TEXT NOT NULL,
-			creator_id BIGINT NOT NULL,
-			creator_username TEXT,
-			creator_name TEXT,
-			started_at TIMESTAMPTZ NOT NULL,
-			duration_seconds INT NOT NULL,
-			ends_at TIMESTAMPTZ NOT NULL,
-			status TEXT NOT NULL DEFAULT 'active',
-			results_message_id INT,
-			processed_at TIMESTAMPTZ
-		)`,
-		`CREATE TABLE IF NOT EXISTS poll_votes (
-			poll_id TEXT NOT NULL,
-			user_id BIGINT NOT NULL,
-			username TEXT,
-			name TEXT,
-			option_ids INT[] NOT NULL,
-			updated_at TIMESTAMPTZ NOT NULL,
-			PRIMARY KEY (poll_id, user_id)
-		)`,
-		`CREATE TABLE IF NOT EXISTS poll_results (
-			poll_id TEXT PRIMARY KEY,
-			results_text TEXT NOT NULL,
-			created_at TIMESTAMPTZ NOT NULL
-		)`,
-	}
-	for _, st := range stmts {
-		if _, err := s.DB.ExecContext(ctx, st); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (s *Store) InsertPoll(ctx context.Context, p *models.PollMeta) error {
 	_, err := s.DB.ExecContext(ctx, `INSERT INTO polls (
 		poll_id, chat_id, message_id, topic, creator_id, creator_username, creator_name, started_at, duration_seconds, ends_at, status

@@ -47,10 +47,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = store.Migrate(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
