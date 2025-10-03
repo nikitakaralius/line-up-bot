@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: lineup_db
     environment:
       POSTGRES_USER: lineup
@@ -18,16 +16,59 @@ services:
       timeout: 5s
       retries: 10
 
-  bot:
-    build: .
-    container_name: lineup_bot
+  migrations:
+    build:
+      context: .
+      target: migrations
+    container_name: lineup_bot_migrations
     depends_on:
       db:
         condition: service_healthy
+    command:
+      - -path
+      - /app/migrations
+      - -database
+      - postgres://lineup:lineup@db:5432/lineup?sslmode=disable
+      - up
+    restart: no
+
+  service:
+    build:
+      context: .
+      target: service
+    container_name: lineup_bot_service
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       POSTGRES_DSN: postgres://lineup:lineup@db:5432/lineup?sslmode=disable
-      LOG_VERBOSE: "1"
+    command:
+      - -dsn
+      - postgres://lineup:lineup@db:5432/lineup?sslmode=disable
+      - -verbose
+      - "true"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: worker
+    container_name: lineup_bot_worker
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    command:
+      - -dsn
+      - postgres://lineup:lineup@db:5432/lineup?sslmode=disable
+      - -verbose
+      - "true"
     restart: unless-stopped
 
 volumes:

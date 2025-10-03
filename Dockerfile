@@ -1,33 +1,44 @@
-# syntax=docker/dockerfile:1
+# build
+FROM golang:1.25 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
-# ---- Builder ----
-FROM golang:1.24-alpine AS builder
-WORKDIR /src
+WORKDIR /workspace
 
-# Install build deps
-RUN apk add --no-cache git ca-certificates tzdata
+COPY go.mod go.mod
+COPY go.sum go.sum
 
-# Cache deps
-COPY go.mod ./
-# go.sum may not exist yet, so ignore; tidy will create it in build stage
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download || true
+RUN go mod download
 
-# Copy source
-COPY . .
+COPY cmd/ cmd/
+COPY internal/ internal/
 
-# Build
-RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/lineup-bot ./cmd/bot
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o lineup-bot-service cmd/service/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o lineup-bot-worker cmd/worker/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
-# ---- Runner ----
-FROM alpine:3.20
+# service
+FROM gcr.io/distroless/static:nonroot AS service
 WORKDIR /app
-RUN apk add --no-cache ca-certificates tzdata
-COPY --from=builder /out/lineup-bot /app/lineup-bot
+COPY --from=builder /workspace/lineup-bot-service .
+USER 65532:65532
+ENV TELEGRAM_BOT_TOKEN = ""
+ENTRYPOINT ["/app/lineup-bot-service"]
 
-ENV TELEGRAM_BOT_TOKEN="" \
-    POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
-    LOG_VERBOSE=0
+# worker
+FROM gcr.io/distroless/static:nonroot AS worker
+WORKDIR /app
+COPY --from=builder /workspace/lineup-bot-worker .
+USER 65532:65532
+ENV TELEGRAM_BOT_TOKEN = ""
+ENTRYPOINT ["/app/lineup-bot-worker"]
 
-ENTRYPOINT ["/app/lineup-bot"]
+
+# migrations
+FROM gcr.io/distroless/static:nonroot AS migrations
+WORKDIR /app
+
+COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
+COPY migrations/ migrations/
+
+ENTRYPOINT ["migrate"]
