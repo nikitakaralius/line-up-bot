@@ -22,7 +22,7 @@ FROM gcr.io/distroless/static:nonroot AS service
 WORKDIR /app
 COPY --from=builder /workspace/lineup-bot-service .
 USER 65532:65532
-ENV TELEGRAM_BOT_TOKEN = ""
+ENV TELEGRAM_BOT_TOKEN=""
 ENTRYPOINT ["/app/lineup-bot-service"]
 
 # worker
@@ -30,7 +30,7 @@ FROM gcr.io/distroless/static:nonroot AS worker
 WORKDIR /app
 COPY --from=builder /workspace/lineup-bot-worker .
 USER 65532:65532
-ENV TELEGRAM_BOT_TOKEN = ""
+ENV TELEGRAM_BOT_TOKEN=""
 ENTRYPOINT ["/app/lineup-bot-worker"]
 
 
