@@ -11,12 +11,12 @@ RUN go mod download
 
 COPY cmd/main.go cmd/main.go
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o line-up-bot cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o lineup-bot cmd/main.go
 
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
-COPY --from=builder /workspace/line-up-bot .
-USER 655532:65532
+COPY --from=builder /workspace/lineup-bot .
+USER 65532:65532
 
 ENV POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
     LOG_VERBOSE=0
