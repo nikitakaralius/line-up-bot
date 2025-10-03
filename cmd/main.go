@@ -27,22 +27,12 @@ func getenv(key, def string) string {
 	return def
 }
 
-func loadConfig() Config {
-	return Config{
+func main() {
+	cfg := Config{
 		BotToken:    os.Getenv("TELEGRAM_BOT_TOKEN"),
 		DatabaseDSN: os.Getenv("POSTGRES_DSN"),
 		LogVerbose:  getenv("LOG_VERBOSE", "0") == "1",
 	}
-}
-
-func must(err error) {
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func main() {
-	cfg := loadConfig()
 	if cfg.BotToken == "" {
 		log.Fatal("TELEGRAM_BOT_TOKEN is required")
 	}
@@ -54,13 +44,23 @@ func main() {
 	defer stop()
 
 	store, err := storage.NewStore(cfg.DatabaseDSN)
-	must(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer store.Close()
-	must(telegram.WaitForDB(ctx, store.DB))
-	must(store.Migrate(ctx))
+	var err2 error = telegram.WaitForDB(ctx, store.DB)
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+	var err3 error = store.Migrate(ctx)
+	if err3 != nil {
+		log.Fatal(err3)
+	}
 
 	bot, err := tgbotapi.NewBotAPI(cfg.BotToken)
-	must(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	if cfg.LogVerbose {
 		bot.Debug = true
 	}
