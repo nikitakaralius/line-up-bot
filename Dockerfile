@@ -1,33 +1,24 @@
-# syntax=docker/dockerfile:1
+FROM golang:1.25 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
-# ---- Builder ----
-FROM golang:1.24-alpine AS builder
-WORKDIR /src
+WORKDIR /workspace
 
-# Install build deps
-RUN apk add --no-cache git ca-certificates tzdata
+COPY go.mod go.mod
+COPY go.sum go.sum
 
-# Cache deps
-COPY go.mod ./
-# go.sum may not exist yet, so ignore; tidy will create it in build stage
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download || true
+RUN go mod download
 
-# Copy source
-COPY . .
+COPY cmd/main.go cmd/main.go
 
-# Build
-RUN --mount=type=cache,target=/go/pkg/mod \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/lineup-bot ./cmd/bot
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o line-up-bot cmd/main.go
 
-# ---- Runner ----
-FROM alpine:3.20
+FROM gcr.io/distroless/static:nonroot
 WORKDIR /app
-RUN apk add --no-cache ca-certificates tzdata
-COPY --from=builder /out/lineup-bot /app/lineup-bot
+COPY --from=builder /workspace/line-up-bot .
+USER 655532:65532
 
-ENV TELEGRAM_BOT_TOKEN="" \
-    POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
+ENV POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
     LOG_VERBOSE=0
 
 ENTRYPOINT ["/app/lineup-bot"]
