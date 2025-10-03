@@ -50,4 +50,3 @@ COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
 COPY migrations/ migrations/
 
 ENV POSTGRES_DSN=""
-CMD ["-path", "/app/migrations", "-database", "env:POSTGRES_DSN", "up"]
