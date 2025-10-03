@@ -24,10 +24,10 @@ WORKDIR /app
 COPY --from=builder /workspace/lineup-bot-service .
 USER 65532:65532
 
-ENV POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
-    LOG_VERBOSE=0
+ENV LOG_VERBOSE=0
 
 ENTRYPOINT ["/app/lineup-bot-service"]
+CMD ["-telegram-bot-token", "env:TELEGRAM_BOT_TOKEN", "-dsn", "env:POSTGRES_DSN", "-verbose", "env:LOG_VERBOSE"]
 
 # worker
 FROM gcr.io/distroless/static:nonroot AS worker
@@ -35,10 +35,10 @@ WORKDIR /app
 COPY --from=builder /workspace/lineup-bot-worker .
 USER 65532:65532
 
-ENV POSTGRES_DSN="postgres://lineup:lineup@db:5432/lineup?sslmode=disable" \
-    LOG_VERBOSE=0
+ENV LOG_VERBOSE=0
 
 ENTRYPOINT ["/app/lineup-bot-worker"]
+CMD ["-telegram-bot-token", "env:TELEGRAM_BOT_TOKEN", "-dsn", "env:POSTGRES_DSN", "-verbose", "env:LOG_VERBOSE"]
 
 # migrations
 FROM gcr.io/distroless/static:nonroot AS migrations
