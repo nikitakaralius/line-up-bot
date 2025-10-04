@@ -14,15 +14,15 @@ import (
 	"github.com/nikitkaralius/lineup/internal/telegram"
 )
 
-// Config holds environment configuration
-type Config struct {
+// config holds environment configuration
+type config struct {
 	TelegramBotToken string
 	DatabaseDSN      string
 	LogVerbose       bool
 }
 
 func main() {
-	cfg := Config{}
+	cfg := config{}
 	flag.StringVar(&cfg.DatabaseDSN, "dsn", "", "Postgres DB DSN (required)")
 	flag.BoolVar(&cfg.LogVerbose, "verbose", false, "Enable verbose logging (default = false)")
 	flag.Parse()
