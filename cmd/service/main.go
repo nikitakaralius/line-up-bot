@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"log"
 	"net/http"
@@ -124,7 +125,7 @@ func main() {
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux}
 	go func() {
 		log.Printf("Service listening on %s", cfg.HTTPAddr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("http server error: %v", err)
 		}
 	}()
