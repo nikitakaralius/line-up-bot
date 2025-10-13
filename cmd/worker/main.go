@@ -8,13 +8,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sort"
 	"syscall"
 	"time"
 
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
+
+	"github.com/nikitkaralius/lineup/internal/storage"
+	lntele "github.com/nikitkaralius/lineup/internal/telegram"
+	lnworker "github.com/nikitkaralius/lineup/internal/worker"
 )
 
 type config struct {
@@ -40,8 +44,24 @@ func main() {
 
 	ctx := context.Background()
 
+	// Init SQL store for persistence operations used by workers
+	store, err := storage.NewStore(cfg.DatabaseDSN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer store.Close()
+	if err := lntele.WaitForDB(ctx, store.DB); err != nil {
+		log.Fatal(err)
+	}
+
+	// Init Telegram bot for posting messages/results from workers
+	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	workers := river.NewWorkers()
-	river.AddWorker(workers, &SortWorker{})
+	river.AddWorker(workers, lnworker.NewFinishPollWorker(store, bot))
 
 	dbPool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
 	if err != nil {
@@ -112,20 +132,4 @@ func main() {
 	}()
 
 	<-riverClient.Stopped()
-}
-
-type SortArgs struct {
-	Strings []string `json:"strings"`
-}
-
-func (SortArgs) Kind() string { return "sort" }
-
-type SortWorker struct {
-	river.WorkerDefaults[SortArgs]
-}
-
-func (w *SortWorker) Work(_ context.Context, job *river.Job[SortArgs]) error {
-	sort.Strings(job.Args.Strings)
-	fmt.Printf("Sorted strings: %+v\n", job.Args.Strings)
-	return nil
 }

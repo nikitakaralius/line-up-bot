@@ -10,11 +10,13 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/nikitkaralius/lineup/internal/async"
+	"github.com/nikitkaralius/lineup/internal/jobs"
 	"github.com/nikitkaralius/lineup/internal/models"
 	"github.com/nikitkaralius/lineup/internal/storage"
 )
 
-func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store, msg *tgbotapi.Message, botUsername string) {
+func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store, msg *tgbotapi.Message, botUsername string, enq async.Enqueuer) {
 	if msg.Chat == nil || (msg.Chat.Type != "group" && msg.Chat.Type != "supergroup") {
 		return
 	}
@@ -85,6 +87,14 @@ func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Sto
 	}
 	if err := store.InsertPoll(ctx, p); err != nil {
 		log.Printf("insert poll error: %v", err)
+		return
+	}
+	// Enqueue async job to finalize poll at EndsAt
+	if enq != nil {
+		args := jobs.FinishPollArgs{PollID: p.PollID, ChatID: p.ChatID, MessageID: p.MessageID, Topic: p.Topic}
+		if err := enq.EnqueueFinishPoll(ctx, args, p.EndsAt); err != nil {
+			log.Printf("enqueue finish poll error: %v", err)
+		}
 	}
 }
 
