@@ -7,6 +7,8 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nikitkaralius/lineup/internal/models"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type Store struct {
