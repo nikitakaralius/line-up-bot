@@ -1,6 +1,6 @@
-package models
+package voters
 
-type Voter struct {
+type TelegramVoterDTO struct {
 	UserID   int64
 	Username string
 	Name     string
