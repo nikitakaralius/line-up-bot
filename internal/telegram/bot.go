@@ -9,7 +9,6 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/nikitkaralius/lineup/internal/models"
 	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/nikitkaralius/lineup/internal/storage"
 )
@@ -73,7 +72,7 @@ func HandleMessage(
 		log.Printf("poll send returned no poll")
 		return
 	}
-	p := &models.PollMeta{
+	p := &polls.TelegramPollDTO{
 		PollID:          sent.Poll.ID,
 		ChatID:          msg.Chat.ID,
 		MessageID:       sent.MessageID,

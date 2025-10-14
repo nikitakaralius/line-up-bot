@@ -7,6 +7,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nikitkaralius/lineup/internal/models"
+	"github.com/nikitkaralius/lineup/internal/polls"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -28,7 +29,7 @@ func NewStore(dsn string) (*Store, error) {
 
 func (s *Store) Close() error { return s.DB.Close() }
 
-func (s *Store) InsertPoll(ctx context.Context, p *models.PollMeta) error {
+func (s *Store) InsertPoll(ctx context.Context, p *polls.TelegramPollDTO) error {
 	_, err := s.DB.ExecContext(ctx, `INSERT INTO polls (
 		poll_id, chat_id, message_id, topic, creator_id, creator_username, creator_name, started_at, duration_seconds, ends_at, status
 	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active')
@@ -59,15 +60,15 @@ func IntSliceToArray(a []int) any {
 	return b
 }
 
-func (s *Store) FindExpiredActivePolls(ctx context.Context) ([]models.PollMeta, error) {
+func (s *Store) FindExpiredActivePolls(ctx context.Context) ([]polls.TelegramPollDTO, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT poll_id, chat_id, message_id, topic, ends_at FROM polls WHERE status='active' AND ends_at <= NOW()`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var res []models.PollMeta
+	var res []polls.TelegramPollDTO
 	for rows.Next() {
-		var p models.PollMeta
+		var p polls.TelegramPollDTO
 		if err := rows.Scan(&p.PollID, &p.ChatID, &p.MessageID, &p.Topic, &p.EndsAt); err != nil {
 			return nil, err
 		}
