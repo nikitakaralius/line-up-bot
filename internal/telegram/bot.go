@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -139,44 +138,6 @@ func parseTopicAndDuration(s string) (string, time.Duration, error) {
 func HandlePollAnswer(ctx context.Context, store *storage.Store, pa *tgbotapi.PollAnswer) {
 	// Persist vote
 	_ = store.UpsertVote(ctx, pa.PollID, pa.User, pa.OptionIDs)
-}
-
-func shuffleVoters(v []models.Voter) {
-	for i := range v {
-		j := rand.Intn(i + 1)
-		v[i], v[j] = v[j], v[i]
-	}
-}
-
-func formatResults(topic string, voters []models.Voter) string {
-	b := strings.Builder{}
-	b.WriteString("Results for: ")
-	b.WriteString(topic)
-	b.WriteString("\n")
-	if len(voters) == 0 {
-		b.WriteString("No one is coming.")
-		return b.String()
-	}
-	for i, v := range voters {
-		b.WriteString(fmt.Sprintf("%d. ", i+1))
-		if v.Username != "" {
-			b.WriteString("@")
-			b.WriteString(v.Username)
-			if v.Name != "" {
-				b.WriteString(" (")
-				b.WriteString(v.Name)
-				b.WriteString(")")
-			}
-		} else {
-			if v.Name != "" {
-				b.WriteString(v.Name)
-			} else {
-				b.WriteString("Anonymous")
-			}
-		}
-		b.WriteString("\n")
-	}
-	return b.String()
 }
 
 func WaitForDB(ctx context.Context, db *sql.DB) error {
