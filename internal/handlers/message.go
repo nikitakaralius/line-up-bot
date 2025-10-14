@@ -1,8 +1,7 @@
-package telegram
+package handlers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"strings"
@@ -131,26 +130,4 @@ func parseTopicAndDuration(s string) (string, time.Duration, error) {
 		return "", 0, fmt.Errorf("bad format")
 	}
 	return topic, dur, nil
-}
-
-func HandlePollAnswer(ctx context.Context, store *polls.Repository, pa *tgbotapi.PollAnswer) {
-	// Persist vote
-	_ = store.UpsertVote(ctx, pa.PollID, pa.User, pa.OptionIDs)
-}
-
-func WaitForDB(ctx context.Context, db *sql.DB) error {
-	deadline := time.Now().Add(2 * time.Minute)
-	for {
-		if err := db.PingContext(ctx); err == nil {
-			return nil
-		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("database not ready after timeout")
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(2 * time.Second):
-		}
-	}
 }

@@ -77,16 +77,16 @@ func (s *Repository) FindExpiredActivePolls(ctx context.Context) ([]TelegramPoll
 	return res, rows.Err()
 }
 
-func (s *Repository) GetComingVoters(ctx context.Context, pollID string) ([]models.Voter, error) {
+func (s *Repository) GetComingVoters(ctx context.Context, pollID string) ([]voters.Voter, error) {
 	// Option index 0 corresponds to "coming"
 	rows, err := s.DB.QueryContext(ctx, `SELECT user_id, COALESCE(username,''), COALESCE(name,'') FROM poll_votes WHERE poll_id=$1 AND 0 = ANY(option_ids)`, pollID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var voters []models.Voter
+	var voters []voters.Voter
 	for rows.Next() {
-		var v models.Voter
+		var v voters.Voter
 		if err := rows.Scan(&v.UserID, &v.Username, &v.Name); err != nil {
 			return nil, err
 		}

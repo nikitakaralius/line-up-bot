@@ -13,11 +13,11 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nikitkaralius/lineup/internal/handlers"
 	"github.com/nikitkaralius/lineup/internal/polls"
+	"github.com/nikitkaralius/lineup/internal/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-
-	lntele "github.com/nikitkaralius/lineup/internal/telegram"
 )
 
 type config struct {
@@ -49,7 +49,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
-	if err := lntele.WaitForDB(ctx, store.DB); err != nil {
+	if err := utils.WaitForDB(ctx, store.DB); err != nil {
 		log.Fatal(err)
 	}
 

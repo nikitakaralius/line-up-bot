@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/nikitkaralius/lineup/internal/models"
+	"github.com/nikitkaralius/lineup/internal/voters"
 	"github.com/riverqueue/river"
 )
 
@@ -60,14 +60,14 @@ func (w *FinishPollWorker) Work(ctx context.Context, job *river.Job[FinishPollAr
 	return nil
 }
 
-func shuffleVoters(v []models.Voter) {
+func shuffleVoters(v []voters.TelegramVoterDTO) {
 	for i := range v {
 		j := rand.Intn(i + 1)
 		v[i], v[j] = v[j], v[i]
 	}
 }
 
-func formatResults(topic string, voters []models.Voter) string {
+func formatResults(topic string, voters []voters.TelegramVoterDTO) string {
 	b := strings.Builder{}
 	b.WriteString("Results for: ")
 	b.WriteString(topic)

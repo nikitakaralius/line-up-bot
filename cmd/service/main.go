@@ -15,11 +15,11 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/nikitkaralius/lineup/internal/handlers"
 	"github.com/nikitkaralius/lineup/internal/polls"
+	"github.com/nikitkaralius/lineup/internal/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
-
-	"github.com/nikitkaralius/lineup/internal/telegram"
 )
 
 // config holds environment configuration
@@ -58,7 +58,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
-	err = telegram.WaitForDB(ctx, store.DB)
+	err = utils.WaitForDB(ctx, store.DB)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -111,10 +111,10 @@ func main() {
 				return
 			}
 			if update.Message != nil {
-				telegram.HandleMessage(r.Context(), bot, store, update.Message, me, pollsService)
+				handlers.HandleMessage(r.Context(), bot, store, update.Message, me, pollsService)
 			}
 			if update.PollAnswer != nil {
-				telegram.HandlePollAnswer(r.Context(), store, update.PollAnswer)
+				handlers.HandlePollAnswer(r.Context(), store, update.PollAnswer)
 			}
 			w.WriteHeader(http.StatusOK)
 		})
@@ -134,10 +134,10 @@ func main() {
 				return
 			case update := <-updates:
 				if update.Message != nil {
-					telegram.HandleMessage(ctx, bot, store, update.Message, me, pollsService)
+					handlers.HandleMessage(ctx, bot, store, update.Message, me, pollsService)
 				}
 				if update.PollAnswer != nil {
-					telegram.HandlePollAnswer(ctx, store, update.PollAnswer)
+					handlers.HandlePollAnswer(ctx, store, update.PollAnswer)
 				}
 			}
 		}
