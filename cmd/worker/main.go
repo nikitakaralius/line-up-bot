@@ -13,12 +13,12 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nikitkaralius/lineup/internal/jobs"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
 	"github.com/nikitkaralius/lineup/internal/storage"
 	lntele "github.com/nikitkaralius/lineup/internal/telegram"
-	lnworker "github.com/nikitkaralius/lineup/internal/worker"
 )
 
 type config struct {
@@ -61,7 +61,7 @@ func main() {
 	}
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, lnworker.NewFinishPollWorker(store, bot))
+	river.AddWorker(workers, jobs.NewFinishPollWorker(store, bot))
 
 	dbPool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
 	if err != nil {
