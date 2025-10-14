@@ -22,7 +22,7 @@ func NewPollsService[TTx any](client *river.Client[TTx]) Service {
 
 func (r *pollService[TTx]) SchedulePollFinish(ctx context.Context, args FinishPollArgs, runAt time.Time) error {
 	opts := &river.InsertOpts{MaxAttempts: 1}
-	if !runAt.IsZero() {
+	if runAt.IsZero() {
 		return fmt.Errorf("runAt must be non zero")
 	}
 	opts.ScheduledAt = runAt
