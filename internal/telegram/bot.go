@@ -10,13 +10,20 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/nikitkaralius/lineup/internal/async"
 	"github.com/nikitkaralius/lineup/internal/jobs"
 	"github.com/nikitkaralius/lineup/internal/models"
+	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/nikitkaralius/lineup/internal/storage"
 )
 
-func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store, msg *tgbotapi.Message, botUsername string, enq async.Enqueuer) {
+func HandleMessage(
+	ctx context.Context,
+	bot *tgbotapi.BotAPI,
+	store *storage.Store,
+	msg *tgbotapi.Message,
+	botUsername string,
+	pollsService polls.Service,
+) {
 	if msg.Chat == nil || (msg.Chat.Type != "group" && msg.Chat.Type != "supergroup") {
 		return
 	}
@@ -90,9 +97,9 @@ func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Sto
 		return
 	}
 	// Enqueue async job to finalize poll at EndsAt
-	if enq != nil {
+	if pollsService != nil {
 		args := jobs.FinishPollArgs{PollID: p.PollID, ChatID: p.ChatID, MessageID: p.MessageID, Topic: p.Topic}
-		if err := enq.EnqueueFinishPoll(ctx, args, p.EndsAt); err != nil {
+		if err := pollsService.SchedulePollFinish(ctx, args, p.EndsAt); err != nil {
 			log.Printf("enqueue finish poll error: %v", err)
 		}
 	}

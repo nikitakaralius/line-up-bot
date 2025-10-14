@@ -15,10 +15,10 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
-	"github.com/nikitkaralius/lineup/internal/async"
 	"github.com/nikitkaralius/lineup/internal/storage"
 	"github.com/nikitkaralius/lineup/internal/telegram"
 )
@@ -83,8 +83,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create river client: %v", err)
 	}
-	enq := async.NewRiverEnqueuer(riverClient)
-	defer enq.Close()
+	pollsService := polls.NewPollsService(riverClient)
 
 	mux := http.NewServeMux()
 
@@ -113,7 +112,7 @@ func main() {
 				return
 			}
 			if update.Message != nil {
-				telegram.HandleMessage(r.Context(), bot, store, update.Message, me, enq)
+				telegram.HandleMessage(r.Context(), bot, store, update.Message, me, pollsService)
 			}
 			if update.PollAnswer != nil {
 				telegram.HandlePollAnswer(r.Context(), store, update.PollAnswer)
@@ -136,7 +135,7 @@ func main() {
 				return
 			case update := <-updates:
 				if update.Message != nil {
-					telegram.HandleMessage(ctx, bot, store, update.Message, me, enq)
+					telegram.HandleMessage(ctx, bot, store, update.Message, me, pollsService)
 				}
 				if update.PollAnswer != nil {
 					telegram.HandlePollAnswer(ctx, store, update.PollAnswer)
