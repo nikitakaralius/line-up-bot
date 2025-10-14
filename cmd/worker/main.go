@@ -13,7 +13,6 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/nikitkaralius/lineup/internal/handlers"
 	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/nikitkaralius/lineup/internal/utils"
 	"github.com/riverqueue/river"
