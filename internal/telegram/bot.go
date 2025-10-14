@@ -5,16 +5,21 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math/rand"
 	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/nikitkaralius/lineup/internal/models"
-	"github.com/nikitkaralius/lineup/internal/storage"
+	"github.com/nikitkaralius/lineup/internal/polls"
 )
 
-func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store, msg *tgbotapi.Message, botUsername string) {
+func HandleMessage(
+	ctx context.Context,
+	bot *tgbotapi.BotAPI,
+	store *polls.Repository,
+	msg *tgbotapi.Message,
+	botUsername string,
+	pollsService polls.Service,
+) {
 	if msg.Chat == nil || (msg.Chat.Type != "group" && msg.Chat.Type != "supergroup") {
 		return
 	}
@@ -66,7 +71,7 @@ func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Sto
 		log.Printf("poll send returned no poll")
 		return
 	}
-	p := &models.PollMeta{
+	p := &polls.TelegramPollDTO{
 		PollID:          sent.Poll.ID,
 		ChatID:          msg.Chat.ID,
 		MessageID:       sent.MessageID,
@@ -85,6 +90,14 @@ func HandleMessage(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Sto
 	}
 	if err := store.InsertPoll(ctx, p); err != nil {
 		log.Printf("insert poll error: %v", err)
+		return
+	}
+	// Enqueue async job to finalize poll at EndsAt
+	if pollsService != nil {
+		args := polls.FinishPollArgs{PollID: p.PollID, ChatID: p.ChatID, MessageID: p.MessageID, Topic: p.Topic}
+		if err := pollsService.SchedulePollFinish(ctx, args, p.EndsAt); err != nil {
+			log.Printf("enqueue finish poll error: %v", err)
+		}
 	}
 }
 
@@ -120,87 +133,9 @@ func parseTopicAndDuration(s string) (string, time.Duration, error) {
 	return topic, dur, nil
 }
 
-func HandlePollAnswer(ctx context.Context, store *storage.Store, pa *tgbotapi.PollAnswer) {
+func HandlePollAnswer(ctx context.Context, store *polls.Repository, pa *tgbotapi.PollAnswer) {
 	// Persist vote
 	_ = store.UpsertVote(ctx, pa.PollID, pa.User, pa.OptionIDs)
-}
-
-func shuffleVoters(v []models.Voter) {
-	for i := range v {
-		j := rand.Intn(i + 1)
-		v[i], v[j] = v[j], v[i]
-	}
-}
-
-func formatResults(topic string, voters []models.Voter) string {
-	b := strings.Builder{}
-	b.WriteString("Results for: ")
-	b.WriteString(topic)
-	b.WriteString("\n")
-	if len(voters) == 0 {
-		b.WriteString("No one is coming.")
-		return b.String()
-	}
-	for i, v := range voters {
-		b.WriteString(fmt.Sprintf("%d. ", i+1))
-		if v.Username != "" {
-			b.WriteString("@")
-			b.WriteString(v.Username)
-			if v.Name != "" {
-				b.WriteString(" (")
-				b.WriteString(v.Name)
-				b.WriteString(")")
-			}
-		} else {
-			if v.Name != "" {
-				b.WriteString(v.Name)
-			} else {
-				b.WriteString("Anonymous")
-			}
-		}
-		b.WriteString("\n")
-	}
-	return b.String()
-}
-
-func SchedulerLoop(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store) {
-	t := time.NewTicker(10 * time.Second)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			polls, err := store.FindExpiredActivePolls(ctx)
-			if err != nil {
-				log.Printf("scheduler query error: %v", err)
-				continue
-			}
-			for _, p := range polls {
-				// Stop poll in chat
-				stopCfg := tgbotapi.NewStopPoll(p.ChatID, p.MessageID)
-				if _, err := bot.Send(stopCfg); err != nil {
-					log.Printf("stop poll error: %v", err)
-				}
-				voters, err := store.GetComingVoters(ctx, p.PollID)
-				if err != nil {
-					log.Printf("get voters error: %v", err)
-					continue
-				}
-				shuffleVoters(voters)
-				text := formatResults(p.Topic, voters)
-				msg := tgbotapi.NewMessage(p.ChatID, text)
-				sent, err := bot.Send(msg)
-				if err != nil {
-					log.Printf("send results error: %v", err)
-					continue
-				}
-				if err := store.MarkProcessed(ctx, p.PollID, text, sent.MessageID); err != nil {
-					log.Printf("mark processed error: %v", err)
-				}
-			}
-		}
-	}
 }
 
 func WaitForDB(ctx context.Context, db *sql.DB) error {

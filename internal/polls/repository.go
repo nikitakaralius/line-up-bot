@@ -1,4 +1,4 @@
-package storage
+package polls
 
 import (
 	"context"
@@ -6,14 +6,17 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/nikitkaralius/lineup/internal/models"
 )
 
-type Store struct {
+// This AI crap will be refactored
+
+type Repository struct {
 	DB *sql.DB
 }
 
-func NewStore(dsn string) (*Store, error) {
+func NewRepository(dsn string) (*Repository, error) {
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
@@ -21,12 +24,12 @@ func NewStore(dsn string) (*Store, error) {
 	db.SetMaxOpenConns(5)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	return &Store{DB: db}, nil
+	return &Repository{DB: db}, nil
 }
 
-func (s *Store) Close() error { return s.DB.Close() }
+func (s *Repository) Close() error { return s.DB.Close() }
 
-func (s *Store) InsertPoll(ctx context.Context, p *models.PollMeta) error {
+func (s *Repository) InsertPoll(ctx context.Context, p *TelegramPollDTO) error {
 	_, err := s.DB.ExecContext(ctx, `INSERT INTO polls (
 		poll_id, chat_id, message_id, topic, creator_id, creator_username, creator_name, started_at, duration_seconds, ends_at, status
 	) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active')
@@ -36,7 +39,7 @@ func (s *Store) InsertPoll(ctx context.Context, p *models.PollMeta) error {
 	return err
 }
 
-func (s *Store) UpsertVote(ctx context.Context, pollID string, u tgbotapi.User, optionIDs []int) error {
+func (s *Repository) UpsertVote(ctx context.Context, pollID string, u tgbotapi.User, optionIDs []int) error {
 	name := u.FirstName
 	if u.LastName != "" {
 		name = name + " " + u.LastName
@@ -57,15 +60,15 @@ func IntSliceToArray(a []int) any {
 	return b
 }
 
-func (s *Store) FindExpiredActivePolls(ctx context.Context) ([]models.PollMeta, error) {
+func (s *Repository) FindExpiredActivePolls(ctx context.Context) ([]TelegramPollDTO, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT poll_id, chat_id, message_id, topic, ends_at FROM polls WHERE status='active' AND ends_at <= NOW()`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var res []models.PollMeta
+	var res []TelegramPollDTO
 	for rows.Next() {
-		var p models.PollMeta
+		var p TelegramPollDTO
 		if err := rows.Scan(&p.PollID, &p.ChatID, &p.MessageID, &p.Topic, &p.EndsAt); err != nil {
 			return nil, err
 		}
@@ -74,7 +77,7 @@ func (s *Store) FindExpiredActivePolls(ctx context.Context) ([]models.PollMeta, 
 	return res, rows.Err()
 }
 
-func (s *Store) GetComingVoters(ctx context.Context, pollID string) ([]models.Voter, error) {
+func (s *Repository) GetComingVoters(ctx context.Context, pollID string) ([]models.Voter, error) {
 	// Option index 0 corresponds to "coming"
 	rows, err := s.DB.QueryContext(ctx, `SELECT user_id, COALESCE(username,''), COALESCE(name,'') FROM poll_votes WHERE poll_id=$1 AND 0 = ANY(option_ids)`, pollID)
 	if err != nil {
@@ -92,7 +95,7 @@ func (s *Store) GetComingVoters(ctx context.Context, pollID string) ([]models.Vo
 	return voters, rows.Err()
 }
 
-func (s *Store) MarkProcessed(ctx context.Context, pollID string, resultsText string, resultsMessageID int) error {
+func (s *Repository) MarkProcessed(ctx context.Context, pollID string, resultsText string, resultsMessageID int) error {
 	_, err := s.DB.ExecContext(ctx, `UPDATE polls SET status='processed', processed_at=NOW(), results_message_id=$2 WHERE poll_id=$1`, pollID, resultsMessageID)
 	if err != nil {
 		return err
