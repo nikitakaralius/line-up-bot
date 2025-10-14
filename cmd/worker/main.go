@@ -13,6 +13,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/nikitkaralius/lineup/internal/jobs"
 	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/nikitkaralius/lineup/internal/voters"
 	"github.com/riverqueue/river"
@@ -57,7 +58,7 @@ func main() {
 	}
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, polls.NewFinishPollWorker(pollsRepo, votersRepo, bot))
+	river.AddWorker(workers, jobs.NewFinishPollWorker(pollsRepo, votersRepo, bot))
 
 	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Queues: map[string]river.QueueConfig{
