@@ -179,46 +179,6 @@ func formatResults(topic string, voters []models.Voter) string {
 	return b.String()
 }
 
-func SchedulerLoop(ctx context.Context, bot *tgbotapi.BotAPI, store *storage.Store) {
-	t := time.NewTicker(10 * time.Second)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			polls, err := store.FindExpiredActivePolls(ctx)
-			if err != nil {
-				log.Printf("scheduler query error: %v", err)
-				continue
-			}
-			for _, p := range polls {
-				// Stop poll in chat
-				stopCfg := tgbotapi.NewStopPoll(p.ChatID, p.MessageID)
-				if _, err := bot.Send(stopCfg); err != nil {
-					log.Printf("stop poll error: %v", err)
-				}
-				voters, err := store.GetComingVoters(ctx, p.PollID)
-				if err != nil {
-					log.Printf("get voters error: %v", err)
-					continue
-				}
-				shuffleVoters(voters)
-				text := formatResults(p.Topic, voters)
-				msg := tgbotapi.NewMessage(p.ChatID, text)
-				sent, err := bot.Send(msg)
-				if err != nil {
-					log.Printf("send results error: %v", err)
-					continue
-				}
-				if err := store.MarkProcessed(ctx, p.PollID, text, sent.MessageID); err != nil {
-					log.Printf("mark processed error: %v", err)
-				}
-			}
-		}
-	}
-}
-
 func WaitForDB(ctx context.Context, db *sql.DB) error {
 	deadline := time.Now().Add(2 * time.Minute)
 	for {
