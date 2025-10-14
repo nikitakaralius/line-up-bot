@@ -10,7 +10,6 @@ import (
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/nikitkaralius/lineup/internal/jobs"
 	"github.com/nikitkaralius/lineup/internal/models"
 	"github.com/nikitkaralius/lineup/internal/polls"
 	"github.com/nikitkaralius/lineup/internal/storage"
@@ -98,7 +97,7 @@ func HandleMessage(
 	}
 	// Enqueue async job to finalize poll at EndsAt
 	if pollsService != nil {
-		args := jobs.FinishPollArgs{PollID: p.PollID, ChatID: p.ChatID, MessageID: p.MessageID, Topic: p.Topic}
+		args := polls.FinishPollArgs{PollID: p.PollID, ChatID: p.ChatID, MessageID: p.MessageID, Topic: p.Topic}
 		if err := pollsService.SchedulePollFinish(ctx, args, p.EndsAt); err != nil {
 			log.Printf("enqueue finish poll error: %v", err)
 		}
