@@ -10,6 +10,8 @@ import (
 	"github.com/nikitkaralius/lineup/internal/models"
 )
 
+// This AI crap will be refactored
+
 type Repository struct {
 	DB *sql.DB
 }
