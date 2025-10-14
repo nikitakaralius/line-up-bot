@@ -14,7 +14,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nikitkaralius/lineup/internal/polls"
-	"github.com/nikitkaralius/lineup/internal/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -48,9 +47,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
-	if err := utils.WaitForDB(ctx, store.DB); err != nil {
-		log.Fatal(err)
-	}
 
 	// Init Telegram bot for posting messages/results from workers
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)

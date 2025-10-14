@@ -17,7 +17,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/nikitkaralius/lineup/internal/handlers"
 	"github.com/nikitkaralius/lineup/internal/polls"
-	"github.com/nikitkaralius/lineup/internal/utils"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -58,10 +57,6 @@ func main() {
 		log.Fatal(err)
 	}
 	defer store.Close()
-	err = utils.WaitForDB(ctx, store.DB)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
