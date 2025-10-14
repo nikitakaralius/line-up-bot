@@ -50,6 +50,12 @@ services:
       - postgres://lineup:lineup@db:5432/lineup?sslmode=disable
       - -verbose
       - "true"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   worker:

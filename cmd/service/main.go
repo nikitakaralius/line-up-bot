@@ -86,6 +86,8 @@ func main() {
 	enq := async.NewRiverEnqueuer(riverClient)
 	defer enq.Close()
 
+	mux := http.NewServeMux()
+
 	switch cfg.Mode {
 	case "webhook":
 		if cfg.WebhookURL == "" {
@@ -104,12 +106,7 @@ func main() {
 			log.Printf("Webhook set: pending updates: %d", info.PendingUpdateCount)
 		}
 
-		mux := http.NewServeMux()
-		mux.HandleFunc("/telegram/webhook", func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodPost {
-				w.WriteHeader(http.StatusMethodNotAllowed)
-				return
-			}
+		mux.HandleFunc("POST /telegram/webhook", func(w http.ResponseWriter, r *http.Request) {
 			var update tgbotapi.Update
 			if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
@@ -123,20 +120,6 @@ func main() {
 			}
 			w.WriteHeader(http.StatusOK)
 		})
-
-		srv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux}
-		go func() {
-			log.Printf("Service listening on %s", cfg.HTTPAddr)
-			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatalf("http server error: %v", err)
-			}
-		}()
-
-		<-ctx.Done()
-		ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctxShutdown)
-
 	case "long-polling":
 		if _, err := bot.Request(tgbotapi.DeleteWebhookConfig{}); err != nil {
 			log.Printf("failed to remove webhook (continuing): %v", err)
@@ -163,4 +146,22 @@ func main() {
 	default:
 		log.Fatal("Unknown mode specified. See available options using --help")
 	}
+
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux}
+	go func() {
+		log.Printf("Service listening on %s", cfg.HTTPAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("http server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(ctxShutdown)
 }
