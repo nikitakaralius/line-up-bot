@@ -13,11 +13,11 @@ type Repository struct {
 	DB *pgxpool.Pool
 }
 
-func NewRepository(db *pgxpool.Pool) (*Repository, error) {
-	return &Repository{DB: db}, nil
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{DB: db}
 }
 
-func (s *Repository) InsertVote(ctx context.Context, pollID string, u tgbotapi.User, optionIDs []int) error {
+func (s *Repository) UpsertVote(ctx context.Context, pollID string, u tgbotapi.User, optionIDs []int) error {
 	name := u.FirstName
 	if u.LastName != "" {
 		name = name + " " + u.LastName

@@ -17,6 +17,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/nikitkaralius/lineup/internal/handlers"
 	"github.com/nikitkaralius/lineup/internal/polls"
+	"github.com/nikitkaralius/lineup/internal/voters"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -52,12 +53,6 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	store, err := polls.NewRepository(cfg.DatabaseDSN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer store.Close()
-
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
 	if err != nil {
 		log.Fatal(err)
@@ -73,6 +68,10 @@ func main() {
 		log.Fatalf("failed to create pgx pool: %v", err)
 	}
 	defer dbPool.Close()
+
+	pollsRepo := polls.NewRepository(dbPool)
+	votersRepo := voters.NewRepository(dbPool)
+
 	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{})
 	if err != nil {
 		log.Fatalf("failed to create river client: %v", err)
@@ -106,10 +105,10 @@ func main() {
 				return
 			}
 			if update.Message != nil {
-				handlers.HandleMessage(r.Context(), bot, store, update.Message, me, pollsService)
+				handlers.HandleMessage(r.Context(), bot, pollsRepo, update.Message, me, pollsService)
 			}
 			if update.PollAnswer != nil {
-				handlers.HandlePollAnswer(r.Context(), store, update.PollAnswer)
+				handlers.HandlePollAnswer(r.Context(), votersRepo, update.PollAnswer)
 			}
 			w.WriteHeader(http.StatusOK)
 		})
@@ -129,10 +128,10 @@ func main() {
 				return
 			case update := <-updates:
 				if update.Message != nil {
-					handlers.HandleMessage(ctx, bot, store, update.Message, me, pollsService)
+					handlers.HandleMessage(ctx, bot, pollsRepo, update.Message, me, pollsService)
 				}
 				if update.PollAnswer != nil {
-					handlers.HandlePollAnswer(ctx, store, update.PollAnswer)
+					handlers.HandlePollAnswer(ctx, votersRepo, update.PollAnswer)
 				}
 			}
 		}

@@ -13,8 +13,8 @@ type Repository struct {
 	DB *pgxpool.Pool
 }
 
-func NewRepository(db *pgxpool.Pool) (*Repository, error) {
-	return &Repository{DB: db}, nil
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{DB: db}
 }
 
 func (s *Repository) InsertPoll(ctx context.Context, p *TelegramPollDTO) error {
@@ -44,7 +44,7 @@ func (s *Repository) FindExpiredActivePolls(ctx context.Context) ([]TelegramPoll
 	return res, rows.Err()
 }
 
-func (s *Repository) MarkProcessed(ctx context.Context, pollID string, resultsText string, resultsMessageID int) error {
+func (s *Repository) MarkProcessed(ctx context.Context, pollID string, resultsMessageID int) error {
 	_, err := s.DB.Exec(ctx, `UPDATE polls SET status='processed', processed_at=NOW(), results_message_id=$2 WHERE poll_id=$1`, pollID, resultsMessageID)
 	if err != nil {
 		return err

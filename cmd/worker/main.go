@@ -14,6 +14,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/nikitkaralius/lineup/internal/polls"
+	"github.com/nikitkaralius/lineup/internal/voters"
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 )
@@ -41,12 +42,13 @@ func main() {
 
 	ctx := context.Background()
 
-	// Init SQL store for persistence operations used by workers
-	store, err := polls.NewRepository(cfg.DatabaseDSN)
+	dbPool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to create db pool")
 	}
-	defer store.Close()
+
+	pollsRepo := polls.NewRepository(dbPool)
+	votersRepo := voters.NewRepository(dbPool)
 
 	// Init Telegram bot for posting messages/results from workers
 	bot, err := tgbotapi.NewBotAPI(cfg.TelegramBotToken)
@@ -55,12 +57,7 @@ func main() {
 	}
 
 	workers := river.NewWorkers()
-	river.AddWorker(workers, polls.NewFinishPollWorker(store, bot))
-
-	dbPool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
-	if err != nil {
-		log.Fatal("Failed to create db bool")
-	}
+	river.AddWorker(workers, polls.NewFinishPollWorker(pollsRepo, votersRepo, bot))
 
 	riverClient, err := river.NewClient(riverpgxv5.New(dbPool), &river.Config{
 		Queues: map[string]river.QueueConfig{

@@ -27,12 +27,13 @@ func (FinishPollArgs) Kind() string { return "finish_poll" }
 
 type FinishPollWorker struct {
 	river.WorkerDefaults[FinishPollArgs]
-	store *Repository
-	bot   *tgbotapi.BotAPI
+	polls  *Repository
+	voters *voters.Repository
+	bot    *tgbotapi.BotAPI
 }
 
-func NewFinishPollWorker(store *Repository, bot *tgbotapi.BotAPI) *FinishPollWorker {
-	return &FinishPollWorker{store: store, bot: bot}
+func NewFinishPollWorker(polls *Repository, voters *voters.Repository, bot *tgbotapi.BotAPI) *FinishPollWorker {
+	return &FinishPollWorker{polls: polls, voters: voters, bot: bot}
 }
 
 func (w *FinishPollWorker) Work(ctx context.Context, job *river.Job[FinishPollArgs]) error {
@@ -43,18 +44,21 @@ func (w *FinishPollWorker) Work(ctx context.Context, job *river.Job[FinishPollAr
 		log.Printf("stop poll error: %v", err)
 		// keep going; maybe already stopped
 	}
-	voters, err := w.store.GetComingVoters(ctx, args.PollID)
+	vs, err := w.voters.GetComingVoters(ctx, args.PollID)
 	if err != nil {
 		return err
 	}
-	shuffleVoters(voters)
-	text := formatResults(args.Topic, voters)
+	shuffleVoters(vs)
+	text := formatResults(args.Topic, vs)
 	msg := tgbotapi.NewMessage(args.ChatID, text)
 	sent, err := w.bot.Send(msg)
 	if err != nil {
 		return err
 	}
-	if err := w.store.MarkProcessed(ctx, args.PollID, text, sent.MessageID); err != nil {
+	if err := w.polls.MarkProcessed(ctx, args.PollID, sent.MessageID); err != nil {
+		return err
+	}
+	if err := w.voters.InsertPollResult(ctx, args.PollID, text); err != nil {
 		return err
 	}
 	return nil
