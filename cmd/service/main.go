@@ -19,7 +19,6 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
-	"github.com/nikitkaralius/lineup/internal/storage"
 	"github.com/nikitkaralius/lineup/internal/telegram"
 )
 
@@ -54,7 +53,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	store, err := storage.NewStore(cfg.DatabaseDSN)
+	store, err := polls.NewRepository(cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatal(err)
 	}

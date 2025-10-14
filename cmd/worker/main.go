@@ -17,7 +17,6 @@ import (
 	"github.com/riverqueue/river"
 	"github.com/riverqueue/river/riverdriver/riverpgxv5"
 
-	"github.com/nikitkaralius/lineup/internal/storage"
 	lntele "github.com/nikitkaralius/lineup/internal/telegram"
 )
 
@@ -45,7 +44,7 @@ func main() {
 	ctx := context.Background()
 
 	// Init SQL store for persistence operations used by workers
-	store, err := storage.NewStore(cfg.DatabaseDSN)
+	store, err := polls.NewRepository(cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatal(err)
 	}

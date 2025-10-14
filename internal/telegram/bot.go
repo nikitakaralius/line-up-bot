@@ -10,13 +10,12 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nikitkaralius/lineup/internal/polls"
-	"github.com/nikitkaralius/lineup/internal/storage"
 )
 
 func HandleMessage(
 	ctx context.Context,
 	bot *tgbotapi.BotAPI,
-	store *storage.Store,
+	store *polls.Repository,
 	msg *tgbotapi.Message,
 	botUsername string,
 	pollsService polls.Service,
@@ -134,7 +133,7 @@ func parseTopicAndDuration(s string) (string, time.Duration, error) {
 	return topic, dur, nil
 }
 
-func HandlePollAnswer(ctx context.Context, store *storage.Store, pa *tgbotapi.PollAnswer) {
+func HandlePollAnswer(ctx context.Context, store *polls.Repository, pa *tgbotapi.PollAnswer) {
 	// Persist vote
 	_ = store.UpsertVote(ctx, pa.PollID, pa.User, pa.OptionIDs)
 }

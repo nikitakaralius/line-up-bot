@@ -9,7 +9,6 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/nikitkaralius/lineup/internal/models"
-	"github.com/nikitkaralius/lineup/internal/storage"
 	"github.com/riverqueue/river"
 )
 
@@ -28,11 +27,11 @@ func (FinishPollArgs) Kind() string { return "finish_poll" }
 
 type FinishPollWorker struct {
 	river.WorkerDefaults[FinishPollArgs]
-	store *storage.Store
+	store *Repository
 	bot   *tgbotapi.BotAPI
 }
 
-func NewFinishPollWorker(store *storage.Store, bot *tgbotapi.BotAPI) *FinishPollWorker {
+func NewFinishPollWorker(store *Repository, bot *tgbotapi.BotAPI) *FinishPollWorker {
 	return &FinishPollWorker{store: store, bot: bot}
 }
 
