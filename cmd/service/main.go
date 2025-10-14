@@ -30,7 +30,7 @@ type config struct {
 	LogVerbose       bool
 	HTTPAddr         string
 	WebhookURL       string
-	Mode             string // "longpoll" (default) or "webhook"
+	Mode             string
 }
 
 func main() {
@@ -39,11 +39,11 @@ func main() {
 	flag.BoolVar(&cfg.LogVerbose, "verbose", false, "Enable verbose logging (default = false)")
 	flag.StringVar(&cfg.HTTPAddr, "http-addr", ":8080", "HTTP listen address (default :8080)")
 	flag.StringVar(&cfg.WebhookURL, "webhook-url", "", "Telegram webhook public URL (required for webhook mode)")
-	flag.StringVar(&cfg.Mode, "mode", "longpoll", "Bot update mode: longpoll or webhook (default longpoll)")
+	flag.StringVar(&cfg.Mode, "mode", "long-polling", "Bot update mode: long-polling or webhook (default long-polling)")
 	flag.Parse()
 
 	if cfg.DatabaseDSN == "" {
-		log.Fatal("dsn is required")
+		log.Fatal("database dsn is required")
 	}
 
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
@@ -74,7 +74,6 @@ func main() {
 	me := bot.Self.UserName
 	log.Printf("Authorized on account @%s", me)
 
-	// Initialize River client (insert-only) and enqueuer
 	dbPool, err := pgxpool.New(ctx, cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatalf("failed to create pgx pool: %v", err)
@@ -138,8 +137,7 @@ func main() {
 		ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctxShutdown)
-
-	default: // longpoll
+	case "long-polling":
 		// Ensure webhook is removed before long polling
 		if _, err := bot.Request(tgbotapi.DeleteWebhookConfig{}); err != nil {
 			log.Printf("failed to remove webhook (continuing): %v", err)
@@ -163,5 +161,7 @@ func main() {
 				}
 			}
 		}
+	default:
+		log.Fatal("Unknown mode specified. See available options in flags")
 	}
 }
