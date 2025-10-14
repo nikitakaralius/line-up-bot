@@ -92,7 +92,6 @@ func main() {
 			log.Fatal("webhook-url is required in webhook mode")
 		}
 
-		// Configure webhook
 		wh, err := tgbotapi.NewWebhook(cfg.WebhookURL)
 		if err != nil {
 			log.Fatalf("failed to build webhook: %v", err)
@@ -137,8 +136,8 @@ func main() {
 		ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctxShutdown)
+
 	case "long-polling":
-		// Ensure webhook is removed before long polling
 		if _, err := bot.Request(tgbotapi.DeleteWebhookConfig{}); err != nil {
 			log.Printf("failed to remove webhook (continuing): %v", err)
 		}
@@ -162,6 +161,6 @@ func main() {
 			}
 		}
 	default:
-		log.Fatal("Unknown mode specified. See available options in flags")
+		log.Fatal("Unknown mode specified. See available options using --help")
 	}
 }
