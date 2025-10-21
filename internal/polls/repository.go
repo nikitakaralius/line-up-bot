@@ -51,3 +51,9 @@ func (s *Repository) MarkProcessed(ctx context.Context, pollID string, resultsMe
 	}
 	return err
 }
+
+func (s *Repository) GetPollTopic(ctx context.Context, pollID string) (string, error) {
+	var topic string
+	err := s.DB.QueryRow(ctx, `SELECT topic FROM polls WHERE poll_id=$1`, pollID).Scan(&topic)
+	return topic, err
+}
