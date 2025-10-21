@@ -38,7 +38,20 @@ func (w *FinishPollWorker) Work(ctx context.Context, job *river.Job[polls.Finish
 	}
 	shuffleVoters(vs)
 	text := formatResults(args.Topic, vs)
+
+	// Create inline keyboard for queue management
+	keyboard := tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🙋 Войти", fmt.Sprintf("queue_join:%s", args.PollID)),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData("🚪 Выйти", fmt.Sprintf("queue_exit:%s", args.PollID)),
+		),
+	)
+
 	msg := tgbotapi.NewMessage(args.ChatID, text)
+	msg.ParseMode = "Markdown"
+	msg.ReplyMarkup = keyboard
 	sent, err := w.bot.Send(msg)
 	if err != nil {
 		return err
@@ -60,32 +73,38 @@ func shuffleVoters(v []voters.TelegramVoterDTO) {
 }
 
 func formatResults(topic string, voters []voters.TelegramVoterDTO) string {
-	b := strings.Builder{}
-	b.WriteString("Results for: ")
-	b.WriteString(topic)
-	b.WriteString("\n")
+	var sb strings.Builder
+	sb.WriteString("🎯 *Результаты опроса:* ")
+	sb.WriteString(topic)
+	sb.WriteString("\n\n")
+
 	if len(voters) == 0 {
-		b.WriteString("No one is coming.")
-		return b.String()
+		sb.WriteString("😔 *Никто не идет*\n\n")
+		sb.WriteString("💡 Используйте кнопки ниже, чтобы присоединиться к очереди!")
+		return sb.String()
 	}
-	for i, v := range voters {
-		b.WriteString(fmt.Sprintf("%d. ", i+1))
-		if v.Username != "" {
-			b.WriteString("@")
-			b.WriteString(v.Username)
-			if v.Name != "" {
-				b.WriteString(" (")
-				b.WriteString(v.Name)
-				b.WriteString(")")
+
+	sb.WriteString(fmt.Sprintf("👥 *Участников:* %d\n\n", len(voters)))
+	sb.WriteString("🏆 *Очередь участников:*\n")
+
+	for i, voter := range voters {
+		sb.WriteString(fmt.Sprintf("%d. ", i+1))
+		if voter.Username != "" {
+			sb.WriteString("@")
+			sb.WriteString(voter.Username)
+			if voter.Name != "" {
+				sb.WriteString(" (")
+				sb.WriteString(voter.Name)
+				sb.WriteString(")")
 			}
+		} else if voter.Name != "" {
+			sb.WriteString(voter.Name)
 		} else {
-			if v.Name != "" {
-				b.WriteString(v.Name)
-			} else {
-				b.WriteString("Anonymous")
-			}
+			sb.WriteString("Аноним")
 		}
-		b.WriteString("\n")
+		sb.WriteString("\n")
 	}
-	return b.String()
+
+	sb.WriteString("\n💡 *Используйте кнопки ниже для управления очередью*")
+	return sb.String()
 }
